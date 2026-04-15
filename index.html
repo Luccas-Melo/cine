@@ -28,6 +28,9 @@
         const TMDB_KEY = "ce3516e77638e3aa43be5560016caeca"; 
         const IMG_URL = "https://image.tmdb.org/t/p/w500";
 
+        // URL do Google Apps Script - substitua pela sua URL apos a implantação
+        const URL_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbz_ks7q63Fu9m8Y5rlS-eCEen2ANHuRVyVtJlTbrfXE81a0L3hMbJY79tWrQUa2JCY/exec";
+
         const StarRating = ({ rating, size = 16, interactive = false, onHover = () => {}, onClick = () => {}, hoverRating = 0 }) => (
             <div className="flex items-center gap-0.5">
                 {[...Array(10)].map((_, i) => {
@@ -57,11 +60,92 @@
             
             const [formRating, setFormRating] = useState(0);
             const [hoverRating, setHoverRating] = useState(0);
+            const [syncing, setSyncing] = useState(false);
 
-            useEffect(() => {
-                localStorage.setItem('cine_v5_movies', JSON.stringify(movies));
-                localStorage.setItem('cine_v5_reviews', JSON.stringify(reviews));
-            }, [movies, reviews]);
+            const syncMovieToSheets = async (movie) => {
+                if (!URL_GOOGLE_SHEETS.includes("script.google.com")) return;
+                try {
+                    const params = new URLSearchParams({
+                        action: 'insertMovie',
+                        id: movie.id.toString(),
+                        title: movie.title,
+                        year: movie.year,
+                        genre: movie.genre,
+                        poster: movie.poster,
+                        description: movie.description
+                    });
+                    await fetch(`${URL_GOOGLE_SHEETS}?${params.toString()}`, { method: 'GET', mode: 'no-cors' });
+                } catch (e) { console.error(e); }
+            };
+
+            const syncReviewToSheets = async (review) => {
+                if (!URL_GOOGLE_SHEETS.includes("script.google.com")) return;
+                try {
+                    const params = new URLSearchParams({
+                        action: 'insertReview',
+                        id: review.id.toString(),
+                        movieId: review.movieId.toString(),
+                        rating: review.rating.toString(),
+                        userName: review.userName,
+                        text: review.text,
+                        date: review.date
+                    });
+                    await fetch(`${URL_GOOGLE_SHEETS}?${params.toString()}`, { method: 'GET', mode: 'no-cors' });
+                } catch (e) { console.error(e); }
+            };
+
+            const loadFromSheets = async () => {
+                if (!URL_GOOGLE_SHEETS.includes("script.google.com")) { alert('URL nao configurada!'); return; }
+                setSyncing(true);
+                try {
+                    const mRes = await fetch(`${URL_GOOGLE_SHEETS}?action=getMovies&t=${Date.now()}`, { mode: 'cors' });
+                    if (mRes.ok) {
+                        const mData = await mRes.json();
+                        if (mData && mData.length > 0) { setMovies(mData); localStorage.setItem('cine_v5_movies', JSON.stringify(mData)); }
+                    }
+                    const rRes = await fetch(`${URL_GOOGLE_SHEETS}?action=getReviews&t=${Date.now()}`, { mode: 'cors' });
+                    if (rRes.ok) {
+                        const rData = await rRes.json();
+                        if (rData && rData.length > 0) { setReviews(rData); localStorage.setItem('cine_v5_reviews', JSON.stringify(rData)); }
+                    }
+                    alert('Dados carregados!');
+                } catch (e) { alert('Erro ao carregar'); }
+                finally { setSyncing(false); }
+            };
+
+            const forceSyncAll = async () => {
+                if (!URL_GOOGLE_SHEETS.includes("script.google.com")) { alert('URL nao configurada!'); return; }
+                setSyncing(true);
+                try {
+                    const params = new URLSearchParams({ action: 'syncAll', movies: JSON.stringify(movies), reviews: JSON.stringify(reviews) });
+                    await fetch(`${URL_GOOGLE_SHEETS}?${params.toString()}`, { method: 'GET', mode: 'no-cors' });
+                    alert('Sincronizado!');
+                } catch (e) { console.error(e); }
+                finally { setSyncing(false); }
+            };
+
+            const deleteMovie = async (id) => {
+                if (!confirm('Tem certeza que deseja excluir este filme?')) return;
+                setMovies(movies.filter(m => m.id !== id));
+                setReviews(reviews.filter(r => r.movieId !== id));
+                if (URL_GOOGLE_SHEETS.includes("script.google.com")) {
+                    try {
+                        const params = new URLSearchParams({ action: 'deleteMovie', id: id.toString() });
+                        await fetch(`${URL_GOOGLE_SHEETS}?${params.toString()}`, { method: 'GET', mode: 'no-cors' });
+                    } catch (e) { console.error(e); }
+                }
+            };
+
+            const deleteReview = async (id) => {
+                if (!confirm('Tem certeza que deseja excluir esta avaliação?')) return;
+                setReviews(reviews.filter(r => r.id !== id));
+                if (URL_GOOGLE_SHEETS.includes("script.google.com")) {
+                    try {
+                        const params = new URLSearchParams({ action: 'deleteReview', id: id.toString() });
+                        await fetch(`${URL_GOOGLE_SHEETS}?${params.toString()}`, { method: 'GET', mode: 'no-cors' });
+                    } catch (e) { console.error(e); }
+                }
+            };
 
             const fetchMovies = async (query) => {
                 if (query.length < 3) { setSuggestions([]); return; }
@@ -96,20 +180,35 @@
                 return filtered.length ? (filtered.reduce((a, b) => a + b.rating, 0) / filtered.length).toFixed(1) : "0.0";
             };
 
-            const saveMovie = (e) => {
+            const saveMovie = async (e) => {
                 e.preventDefault();
                 const id = Date.now();
-                setMovies([{ ...movieForm, id }, ...movies]);
+                const newMovie = { ...movieForm, id };
+                setMovies([newMovie, ...movies]);
                 setShowAddModal(false);
                 setMovieForm({ title: '', year: '', genre: 'Filme', poster: '', description: '' });
+                await syncMovieToSheets(newMovie);
             };
+
+            useEffect(() => {
+                localStorage.setItem('cine_v5_movies', JSON.stringify(movies));
+                localStorage.setItem('cine_v5_reviews', JSON.stringify(reviews));
+            }, [movies, reviews]);
 
             return (
                 <div className="min-h-screen pb-10">
                     <nav className="sticky top-0 z-50 glass px-8 py-4 flex justify-between items-center">
                         <h1 onClick={() => setView('catalog')} className="text-2xl font-black cursor-pointer">CINE<span className="text-yellow-500">RATE</span></h1>
-                        <div className="flex gap-6 items-center">
+                        <div className="flex gap-4 items-center">
                             <button onClick={() => setView('ranking')} className="text-xs font-bold uppercase tracking-widest text-zinc-400 hover:text-white transition-colors">Ranking</button>
+                            <button onClick={loadFromSheets} disabled={syncing} className="text-xs font-bold uppercase tracking-widest text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-2">
+                                {syncing ? <span className="loader-spin w-3 h-3 border-2"></span> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>}
+                                Baixar
+                            </button>
+                            <button onClick={forceSyncAll} disabled={syncing} className="text-xs font-bold uppercase tracking-widest text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-2">
+                                {syncing ? <span className="loader-spin w-3 h-3 border-2"></span> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>}
+                                Enviar
+                            </button>
                             <button onClick={() => setShowAddModal(true)} className="bg-yellow-500 text-black px-6 py-2.5 rounded-full font-black text-[10px] uppercase tracking-tighter hover:scale-105 transition-all">Adicionar Filme</button>
                         </div>
                     </nav>
@@ -125,15 +224,18 @@
                                 ) : (
                                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-10">
                                         {movies.map(m => (
-                                            <div key={m.id} onClick={() => {setSelectedMovie(m); setView('details')}} className="group cursor-pointer">
-                                                <div className="relative aspect-[2/3] rounded-[32px] overflow-hidden mb-4 shadow-2xl border border-white/5 bg-zinc-900">
+                                            <div key={m.id} className="group">
+                                                <div onClick={() => {setSelectedMovie(m); setView('details')}} className="relative aspect-[2/3] rounded-[32px] overflow-hidden mb-4 shadow-2xl border border-white/5 bg-zinc-900 cursor-pointer">
                                                     <img src={m.poster} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                                                     <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
                                                         <span className="text-yellow-500 text-xs font-black italic">★ {getAvg(m.id)}</span>
                                                     </div>
                                                 </div>
-                                                <h3 className="font-bold text-sm truncate">{m.title}</h3>
-                                                <p className="text-zinc-500 text-[10px] font-bold uppercase">{m.year}</p>
+                                                <h3 onClick={() => {setSelectedMovie(m); setView('details')}} className="font-bold text-sm truncate cursor-pointer">{m.title}</h3>
+                                                <div className="flex justify-between items-center">
+                                                    <p className="text-zinc-500 text-[10px] font-bold uppercase">{m.year}</p>
+                                                    <button onClick={(e) => { e.stopPropagation(); deleteMovie(m.id); }} className="text-red-500 hover:text-red-400 text-[10px] font-bold uppercase">Excluir</button>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
@@ -153,18 +255,22 @@
                                         </div>
                                     </div>
                                     <div className="md:col-span-7">
-                                        <h1 className="text-6xl font-black mb-4 leading-none tracking-tighter">{selectedMovie.title}</h1>
+                                        <div className="flex justify-between items-start mb-4">
+                                            <h1 className="text-6xl font-black leading-none tracking-tighter">{selectedMovie.title}</h1>
+                                            <button onClick={() => deleteMovie(selectedMovie.id)} className="text-red-500 hover:text-red-400 text-[10px] font-bold uppercase">Excluir Filme</button>
+                                        </div>
                                         <p className="text-zinc-500 font-bold mb-8 uppercase tracking-widest">{selectedMovie.year} • {selectedMovie.genre}</p>
                                         <p className="text-zinc-400 text-xl leading-relaxed mb-12">{selectedMovie.description}</p>
                                         
                                         <div className="bg-zinc-900/50 p-10 rounded-[40px] border border-white/5 shadow-inner">
                                             <h2 className="text-2xl font-bold mb-8 italic">Escrever Crítica</h2>
-                                            <form onSubmit={(e) => {
+                                            <form onSubmit={async (e) => {
                                                 e.preventDefault();
                                                 if(formRating === 0) return alert("Selecione uma nota!");
                                                 const rev = { id: Date.now(), movieId: selectedMovie.id, rating: formRating, userName: e.target.user.value || "Anon", text: e.target.text.value, date: new Date().toLocaleDateString('pt-BR') };
                                                 setReviews([rev, ...reviews]);
                                                 setFormRating(0); e.target.reset();
+                                                await syncReviewToSheets(rev);
                                             }} className="space-y-6">
                                                 <div className="bg-black/40 p-6 rounded-3xl w-fit border border-white/5 flex items-center gap-6">
                                                     <StarRating interactive={true} rating={formRating} hoverRating={hoverRating} onHover={setHoverRating} onClick={setFormRating} size={28} />
@@ -183,9 +289,12 @@
                                                     <div className="flex-1">
                                                         <div className="flex justify-between items-center mb-4">
                                                             <h4 className="font-bold">{r.userName}</h4>
-                                                            <div className="flex items-center gap-3 bg-black/40 px-3 py-1.5 rounded-xl border border-white/5">
-                                                                <StarRating rating={r.rating} size={10} />
-                                                                <span className="text-yellow-500 font-bold text-xs">{r.rating}</span>
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="flex items-center gap-3 bg-black/40 px-3 py-1.5 rounded-xl border border-white/5">
+                                                                    <StarRating rating={r.rating} size={10} />
+                                                                    <span className="text-yellow-500 font-bold text-xs">{r.rating}</span>
+                                                                </div>
+                                                                <button onClick={() => deleteReview(r.id)} className="text-red-500 hover:text-red-400 text-[10px] font-bold uppercase">Excluir</button>
                                                             </div>
                                                         </div>
                                                         <p className="text-zinc-400 italic leading-relaxed">"{r.text}"</p>
