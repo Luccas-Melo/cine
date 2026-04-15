@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CineRate | Estável & Inteligente</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0c0c0e; color: #eee; }
+        .glass { background: rgba(18, 18, 20, 0.8); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .animate-slide-up { animation: slideUp 0.4s ease-out forwards; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        .loader-spin { border: 2px solid #facc15; border-right-color: transparent; animation: spin 0.8s linear infinite; border-radius: 50%; width: 20px; height: 20px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Tente usar esta chave, se der 401, você precisará gerar a sua no site do TMDB
+        const TMDB_KEY = "ce3516e77638e3aa43be5560016caeca"; 
+        const IMG_URL = "https://image.tmdb.org/t/p/w500";
+
+        const StarRating = ({ rating, size = 16, interactive = false, onHover = () => {}, onClick = () => {}, hoverRating = 0 }) => (
+            <div className="flex items-center gap-0.5">
+                {[...Array(10)].map((_, i) => {
+                    const starVal = i + 1;
+                    const active = interactive ? (hoverRating || rating) >= starVal : rating >= starVal;
+                    return (
+                        <svg key={i} onClick={() => interactive && onClick(starVal)} onMouseEnter={() => interactive && onHover(starVal)} onMouseLeave={() => interactive && onHover(0)} width={size} height={size} viewBox="0 0 24 24" fill={active ? "#facc15" : "none"} stroke={active ? "#facc15" : "#3f3f46"} strokeWidth="2" className={interactive ? 'cursor-pointer transition-transform hover:scale-125' : ''}>
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                        </svg>
+                    );
+                })}
+            </div>
+        );
+
+        const App = () => {
+            const [movies, setMovies] = useState(() => JSON.parse(localStorage.getItem('cine_v5_movies')) || []);
+            const [reviews, setReviews] = useState(() => JSON.parse(localStorage.getItem('cine_v5_reviews')) || []);
+            const [view, setView] = useState("catalog");
+            const [selectedMovie, setSelectedMovie] = useState(null);
+            const [showAddModal, setShowAddModal] = useState(false);
+            
+            // Busca e Form
+            const [suggestions, setSuggestions] = useState([]);
+            const [loading, setLoading] = useState(false);
+            const [errorApi, setErrorApi] = useState(false);
+            const [movieForm, setMovieForm] = useState({ title: '', year: '', genre: 'Filme', poster: '', description: '' });
+            
+            const [formRating, setFormRating] = useState(0);
+            const [hoverRating, setHoverRating] = useState(0);
+
+            useEffect(() => {
+                localStorage.setItem('cine_v5_movies', JSON.stringify(movies));
+                localStorage.setItem('cine_v5_reviews', JSON.stringify(reviews));
+            }, [movies, reviews]);
+
+            const fetchMovies = async (query) => {
+                if (query.length < 3) { setSuggestions([]); return; }
+                setLoading(true);
+                setErrorApi(false);
+                try {
+                    const res = await fetch(`https://api.themoviedb.org/3/search/movie?api_key=${TMDB_KEY}&query=${encodeURIComponent(query)}&language=pt-BR`);
+                    if (!res.ok) throw new Error("401");
+                    const data = await res.json();
+                    setSuggestions(data.results ? data.results.slice(0, 5) : []);
+                } catch (err) {
+                    setErrorApi(true);
+                    setSuggestions([]);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const selectItem = (m) => {
+                setMovieForm({
+                    title: m.title,
+                    year: m.release_date ? m.release_date.split('-')[0] : 'Desconhecido',
+                    genre: "Filme",
+                    poster: m.poster_path ? IMG_URL + m.poster_path : 'https://images.unsplash.com/photo-1440404653325-ab127d49abc1?w=800',
+                    description: m.overview || "Sem descrição disponível."
+                });
+                setSuggestions([]);
+            };
+
+            const getAvg = (id) => {
+                const filtered = reviews.filter(r => r.movieId === id);
+                return filtered.length ? (filtered.reduce((a, b) => a + b.rating, 0) / filtered.length).toFixed(1) : "0.0";
+            };
+
+            const saveMovie = (e) => {
+                e.preventDefault();
+                const id = Date.now();
+                setMovies([{ ...movieForm, id }, ...movies]);
+                setShowAddModal(false);
+                setMovieForm({ title: '', year: '', genre: 'Filme', poster: '', description: '' });
+            };
+
+            return (
+                <div className="min-h-screen pb-10">
+                    <nav className="sticky top-0 z-50 glass px-8 py-4 flex justify-between items-center">
+                        <h1 onClick={() => setView('catalog')} className="text-2xl font-black cursor-pointer">CINE<span className="text-yellow-500">RATE</span></h1>
+                        <div className="flex gap-6 items-center">
+                            <button onClick={() => setView('ranking')} className="text-xs font-bold uppercase tracking-widest text-zinc-400 hover:text-white transition-colors">Ranking</button>
+                            <button onClick={() => setShowAddModal(true)} className="bg-yellow-500 text-black px-6 py-2.5 rounded-full font-black text-[10px] uppercase tracking-tighter hover:scale-105 transition-all">Adicionar Filme</button>
+                        </div>
+                    </nav>
+
+                    <main className="max-w-7xl mx-auto p-6">
+                        {view === 'catalog' && (
+                            <div className="animate-slide-up">
+                                <h2 className="text-4xl font-black mb-10 italic">Meu Catálogo</h2>
+                                {movies.length === 0 ? (
+                                    <div className="py-20 text-center border-2 border-dashed border-zinc-800 rounded-[40px]">
+                                        <p className="text-zinc-500 font-bold uppercase text-xs tracking-widest">Sua biblioteca está vazia</p>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-10">
+                                        {movies.map(m => (
+                                            <div key={m.id} onClick={() => {setSelectedMovie(m); setView('details')}} className="group cursor-pointer">
+                                                <div className="relative aspect-[2/3] rounded-[32px] overflow-hidden mb-4 shadow-2xl border border-white/5 bg-zinc-900">
+                                                    <img src={m.poster} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                                                    <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
+                                                        <span className="text-yellow-500 text-xs font-black italic">★ {getAvg(m.id)}</span>
+                                                    </div>
+                                                </div>
+                                                <h3 className="font-bold text-sm truncate">{m.title}</h3>
+                                                <p className="text-zinc-500 text-[10px] font-bold uppercase">{m.year}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {view === 'details' && selectedMovie && (
+                            <div className="animate-slide-up max-w-5xl mx-auto">
+                                <button onClick={() => setView('catalog')} className="text-zinc-500 hover:text-white mb-10 text-xs font-bold tracking-widest">← VOLTAR</button>
+                                <div className="grid md:grid-cols-12 gap-16">
+                                    <div className="md:col-span-5 text-center">
+                                        <img src={selectedMovie.poster} className="w-full rounded-[48px] shadow-2xl border border-white/10 mb-6" />
+                                        <div className="inline-flex items-center gap-4 bg-zinc-900 px-6 py-3 rounded-full border border-white/5">
+                                            <span className="text-3xl font-black text-yellow-500 italic">{getAvg(selectedMovie.id)}</span>
+                                            <StarRating rating={Math.round(getAvg(selectedMovie.id))} size={14} />
+                                        </div>
+                                    </div>
+                                    <div className="md:col-span-7">
+                                        <h1 className="text-6xl font-black mb-4 leading-none tracking-tighter">{selectedMovie.title}</h1>
+                                        <p className="text-zinc-500 font-bold mb-8 uppercase tracking-widest">{selectedMovie.year} • {selectedMovie.genre}</p>
+                                        <p className="text-zinc-400 text-xl leading-relaxed mb-12">{selectedMovie.description}</p>
+                                        
+                                        <div className="bg-zinc-900/50 p-10 rounded-[40px] border border-white/5 shadow-inner">
+                                            <h2 className="text-2xl font-bold mb-8 italic">Escrever Crítica</h2>
+                                            <form onSubmit={(e) => {
+                                                e.preventDefault();
+                                                if(formRating === 0) return alert("Selecione uma nota!");
+                                                const rev = { id: Date.now(), movieId: selectedMovie.id, rating: formRating, userName: e.target.user.value || "Anon", text: e.target.text.value, date: new Date().toLocaleDateString('pt-BR') };
+                                                setReviews([rev, ...reviews]);
+                                                setFormRating(0); e.target.reset();
+                                            }} className="space-y-6">
+                                                <div className="bg-black/40 p-6 rounded-3xl w-fit border border-white/5 flex items-center gap-6">
+                                                    <StarRating interactive={true} rating={formRating} hoverRating={hoverRating} onHover={setHoverRating} onClick={setFormRating} size={28} />
+                                                    <span className="text-3xl font-black text-yellow-500 w-12 text-center">{hoverRating || formRating}</span>
+                                                </div>
+                                                <input name="user" placeholder="Seu apelido" className="w-full bg-black/20 border border-white/10 rounded-2xl px-6 py-4 outline-none focus:border-yellow-500 transition-colors font-bold" />
+                                                <textarea name="text" required placeholder="O que você achou?" className="w-full bg-black/20 border border-white/10 rounded-2xl px-6 py-4 h-32 outline-none focus:border-yellow-500 font-medium" />
+                                                <button className="w-full bg-yellow-500 text-black font-black py-5 rounded-2xl hover:bg-yellow-400 transition-all uppercase tracking-widest text-xs">Publicar Avaliação</button>
+                                            </form>
+                                        </div>
+
+                                        <div className="mt-16 space-y-8">
+                                            {reviews.filter(r => r.movieId === selectedMovie.id).map(r => (
+                                                <div key={r.id} className="bg-white/5 p-8 rounded-[32px] flex gap-6 border border-white/5">
+                                                    <div className="w-12 h-12 rounded-full bg-yellow-500 text-black flex items-center justify-center font-black text-xl">{r.userName[0].toUpperCase()}</div>
+                                                    <div className="flex-1">
+                                                        <div className="flex justify-between items-center mb-4">
+                                                            <h4 className="font-bold">{r.userName}</h4>
+                                                            <div className="flex items-center gap-3 bg-black/40 px-3 py-1.5 rounded-xl border border-white/5">
+                                                                <StarRating rating={r.rating} size={10} />
+                                                                <span className="text-yellow-500 font-bold text-xs">{r.rating}</span>
+                                                            </div>
+                                                        </div>
+                                                        <p className="text-zinc-400 italic leading-relaxed">"{r.text}"</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {view === 'ranking' && (
+                            <div className="max-w-2xl mx-auto animate-slide-up">
+                                <h1 className="text-5xl font-black mb-12 italic tracking-tighter text-center">HALL DA <span className="text-yellow-500">FAMA</span></h1>
+                                {movies.length === 0 ? <p className="text-center text-zinc-500">Catálogo vazio.</p> : 
+                                    movies.map(m => ({...m, score: parseFloat(getAvg(m.id))}))
+                                          .sort((a,b) => b.score - a.score)
+                                          .map((m, i) => (
+                                        <div key={m.id} onClick={() => {setSelectedMovie(m); setView('details')}} className="bg-zinc-900/40 p-6 rounded-[32px] border border-white/5 flex items-center gap-8 mb-6 hover:bg-zinc-800 transition-all cursor-pointer group">
+                                            <span className="text-4xl font-black text-zinc-800 group-hover:text-yellow-500 transition-colors w-12">{i+1}</span>
+                                            <img src={m.poster} className="w-16 h-24 object-cover rounded-2xl shadow-xl border border-white/10" />
+                                            <div className="flex-1">
+                                                <h3 className="font-bold text-xl">{m.title}</h3>
+                                                <p className="text-[10px] text-zinc-500 font-black tracking-widest uppercase">{m.year}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-3xl font-black text-yellow-500 italic">{m.score.toFixed(1)}</div>
+                                            </div>
+                                        </div>
+                                    ))
+                                }
+                            </div>
+                        )}
+                    </main>
+
+                    {showAddModal && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/95 backdrop-blur-xl">
+                            <div className="bg-zinc-900 border border-white/10 w-full max-w-xl rounded-[48px] p-12 animate-slide-up relative shadow-2xl">
+                                <button onClick={() => setShowAddModal(false)} className="absolute top-10 right-10 text-zinc-500 hover:text-white transition-colors text-2xl">✕</button>
+                                <h2 className="text-3xl font-black mb-10 italic tracking-tighter">NOVO FILME</h2>
+                                
+                                {errorApi && (
+                                    <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-2xl mb-6 text-xs font-bold">
+                                        ⚠️ Erro 401: Chave de API expirada ou inválida. Você pode preencher manualmente abaixo.
+                                    </div>
+                                )}
+
+                                <form onSubmit={saveMovie} className="space-y-5">
+                                    <div className="relative">
+                                        <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3 block">Título (Busca Inteligente)</label>
+                                        <input 
+                                            value={movieForm.title}
+                                            onChange={(e) => {
+                                                setMovieForm({...movieForm, title: e.target.value});
+                                                fetchMovies(e.target.value);
+                                            }}
+                                            required placeholder="Batman, Matrix, Inception..." 
+                                            className="w-full bg-black/40 border border-white/10 rounded-3xl px-8 py-5 outline-none focus:border-yellow-500 font-bold transition-all" 
+                                        />
+                                        {loading && <div className="absolute right-6 top-14 loader-spin"></div>}
+                                        
+                                        {suggestions.length > 0 && (
+                                            <div className="absolute top-full left-0 right-0 mt-3 bg-zinc-800 rounded-[32px] border border-white/10 shadow-2xl z-[110] overflow-hidden">
+                                                {suggestions.map(s => (
+                                                    <div key={s.id} onClick={() => selectItem(s)} className="p-5 hover:bg-yellow-500 hover:text-black cursor-pointer flex items-center gap-5 transition-all">
+                                                        <img src={s.poster_path ? IMG_URL+s.poster_path : ''} className="w-12 h-16 rounded-xl object-cover bg-zinc-700" />
+                                                        <div>
+                                                            <p className="font-black text-sm">{s.title}</p>
+                                                            <p className="text-[10px] font-bold opacity-70">{s.release_date?.split('-')[0]}</p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 block ml-2">Ano</label>
+                                            <input value={movieForm.year} onChange={(e)=>setMovieForm({...movieForm, year: e.target.value})} placeholder="2024" className="w-full bg-black/40 border border-white/5 rounded-3xl px-6 py-4 outline-none font-bold" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 block ml-2">Gênero</label>
+                                            <input value={movieForm.genre} onChange={(e)=>setMovieForm({...movieForm, genre: e.target.value})} placeholder="Ação" className="w-full bg-black/40 border border-white/5 rounded-3xl px-6 py-4 outline-none font-bold" />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 block ml-2">Poster (URL)</label>
+                                        <input value={movieForm.poster} onChange={(e)=>setMovieForm({...movieForm, poster: e.target.value})} placeholder="https://..." className="w-full bg-black/40 border border-white/5 rounded-3xl px-6 py-4 outline-none text-[10px] font-mono text-zinc-500" />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 block ml-2">Sinopse</label>
+                                        <textarea value={movieForm.description} onChange={(e)=>setMovieForm({...movieForm, description: e.target.value})} placeholder="Conte a história..." className="w-full bg-black/40 border border-white/5 rounded-3xl px-6 py-4 h-28 outline-none font-medium text-sm" />
+                                    </div>
+
+                                    <button className="w-full bg-white text-black font-black py-6 rounded-3xl hover:bg-yellow-500 transition-all uppercase tracking-widest text-xs mt-6 shadow-xl">
+                                        Salvar no Catálogo
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
