@@ -1,37 +1,117 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CineRate | Estável & Inteligente</title>
+    <title>CineRate</title>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <favicon href="icon.svg" />
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap"
+        rel="stylesheet">
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0c0c0e; color: #eee; }
-        .glass { background: rgba(18, 18, 20, 0.8); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .animate-slide-up { animation: slideUp 0.4s ease-out forwards; }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-        .loader-spin { border: 2px solid #facc15; border-right-color: transparent; animation: spin 0.8s linear infinite; border-radius: 50%; width: 20px; height: 20px; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #0c0c0e;
+            color: #eee;
+        }
+
+        .glass {
+            background: rgba(18, 18, 20, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .animate-slide-up {
+            animation: slideUp 0.4s ease-out forwards;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(15px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .loader-spin {
+            border: 2px solid #facc15;
+            border-right-color: transparent;
+            animation: spin 0.8s linear infinite;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .skeleton-load {
+            background: linear-gradient(90deg, rgba(255, 217, 82, 0) 0%, rgba(255, 217, 82, 0.5) 50%, rgba(255, 217, 82, 0) 100%);
+            background-size: 200% 100%;
+            animation: skeletonShimmer 2s infinite;
+        }
+
+        @keyframes skeletonShimmer {
+            0% {
+                background-position: 200% 0;
+            }
+            100% {
+                background-position: -200% 0;
+            }
+        }
+
+        .skeleton-pulse {
+            animation: skeletonPulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes skeletonPulse {
+            0%, 100% {
+                opacity: 0.6;
+            }
+            50% {
+                opacity: 1;
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
     </style>
 </head>
+
 <body>
     <div id="root"></div>
-
     <script type="text/babel">
         const { useState, useEffect } = React;
 
         // Tente usar esta chave, se der 401, você precisará gerar a sua no site do TMDB
-        const TMDB_KEY = "ce3516e77638e3aa43be5560016caeca"; 
+        const TMDB_KEY = "ce3516e77638e3aa43be5560016caeca";
         const IMG_URL = "https://image.tmdb.org/t/p/w500";
 
         // URL do Google Apps Script - substitua pela sua URL apos a implantação
         const URL_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbz_ks7q63Fu9m8Y5rlS-eCEen2ANHuRVyVtJlTbrfXE81a0L3hMbJY79tWrQUa2JCY/exec";
 
-        const StarRating = ({ rating, size = 16, interactive = false, onHover = () => {}, onClick = () => {}, hoverRating = 0 }) => (
+        const StarRating = ({ rating, size = 16, interactive = false, onHover = () => { }, onClick = () => { }, hoverRating = 0 }) => (
             <div className="flex items-center gap-0.5">
                 {[...Array(10)].map((_, i) => {
                     const starVal = i + 1;
@@ -45,22 +125,191 @@
             </div>
         );
 
+        const SkeletonLoader = ({ type = 'movie', count = 5 }) => {
+             if (type === 'detail') {
+                // Skeleton para página de detalhes
+                return (
+                    <div className="animate-slide-up max-w-5xl mx-auto">
+                        <div className="h-10 bg-zinc-800 skeleton-pulse rounded-lg mb-10 w-32"></div>
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16">
+                            <div className="lg:col-span-5 text-center">
+                                <div className="w-full max-w-xs mx-auto aspect-[2/3] rounded-[48px] skeleton-load skeleton-pulse bg-zinc-800 mb-6 border border-white/5 flex items-center justify-center">
+                                    <img src="icon.svg" alt="icon" width="64" height="64" className="opacity-50" style={{filter: 'brightness(0) saturate(100%) invert(100%) sepia(100%) saturate(10000%) hue-rotate(45deg)'}} />
+                                </div>
+                                <div className="inline-flex items-center gap-4 bg-zinc-900 px-6 py-3 rounded-full border border-white/5">
+                                    <div className="h-8 w-20 skeleton-pulse bg-zinc-800 rounded-lg"></div>
+                                </div>
+                            </div>
+                            <div className="lg:col-span-7">
+                                <div className="h-12 bg-zinc-800 skeleton-pulse rounded-lg mb-4 w-3/4"></div>
+                                <div className="h-4 bg-zinc-800 skeleton-pulse rounded-lg mb-8 w-1/2"></div>
+                                <div className="space-y-3 mb-12">
+                                    <div className="h-4 bg-zinc-800 skeleton-pulse rounded-lg"></div>
+                                    <div className="h-4 bg-zinc-800 skeleton-pulse rounded-lg"></div>
+                                    <div className="h-4 bg-zinc-800 skeleton-pulse rounded-lg w-5/6"></div>
+                                </div>
+                                <div className="bg-zinc-900/50 p-10 rounded-[40px] border border-white/5 space-y-4">
+                                    <div className="h-6 bg-zinc-800 skeleton-pulse rounded-lg w-2/3"></div>
+                                    <div className="h-12 bg-zinc-800 skeleton-pulse rounded-lg"></div>
+                                    <div className="h-12 bg-zinc-800 skeleton-pulse rounded-lg"></div>
+                                    <div className="h-24 bg-zinc-800 skeleton-pulse rounded-lg"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            } else if (type === 'ranking') {
+                // Skeleton para página de ranking
+                return (
+                    <div className="max-w-2xl mx-auto animate-slide-up">
+                        <div className="h-12 bg-zinc-800 skeleton-pulse rounded-lg mb-12 w-2/3 mx-auto"></div>
+                        <div className="space-y-4">
+                            {[...Array(count)].map((_, i) => (
+                                <div key={i} className="bg-zinc-900/40 p-6 rounded-[32px] border border-white/5 flex items-center gap-8">
+                                    <div className="h-10 w-12 bg-zinc-800 skeleton-pulse rounded-lg flex items-center justify-center">
+                                        <img src="icon.svg" alt="icon" width="24" height="24" className="opacity-50" style={{filter: 'brightness(0) saturate(100%) invert(100%) sepia(100%) saturate(10000%) hue-rotate(45deg)'}} />
+                                    </div>
+                                    <div className="w-16 h-24 bg-zinc-800 skeleton-pulse rounded-2xl flex items-center justify-center">
+                                        <img src="icon.svg" alt="icon" width="32" height="32" className="opacity-50" style={{filter: 'brightness(0) saturate(100%) invert(100%) sepia(100%) saturate(10000%) hue-rotate(45deg)'}} />
+                                    </div>
+                                    <div className="flex-1 space-y-2">
+                                        <div className="h-6 bg-zinc-800 skeleton-pulse rounded-lg"></div>
+                                        <div className="h-3 bg-zinc-800 skeleton-pulse rounded-lg w-1/3"></div>
+                                    </div>
+                                    <div className="h-8 w-16 bg-zinc-800 skeleton-pulse rounded-lg flex items-center justify-center">
+                                        <span className="text-yellow-500 font-bold opacity-50">0.0</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
+            }
+        };
+
+        // Não está mais sendo usado, mantido apenas como backup
+        
+
+        const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel, isDelete = false }) => {
+            if (!isOpen) return null;
+            
+            return (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-black/95 backdrop-blur-xl">
+                    <div className="bg-zinc-900 border border-white/10 w-full max-w-md rounded-[40px] p-10 animate-slide-up shadow-2xl">
+                        <h2 className="text-2xl font-black mb-3 italic">{title}</h2>
+                        <p className="text-zinc-400 mb-10 text-sm leading-relaxed">{message}</p>
+                        <div className="flex gap-4">
+                            <button onClick={onCancel} className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white px-6 py-4 rounded-2xl font-bold uppercase text-xs tracking-wider transition-all">
+                                Cancelar
+                            </button>
+                            <button onClick={onConfirm} className={`flex-1 px-6 py-4 rounded-2xl font-bold uppercase text-xs tracking-wider transition-all ${isDelete ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-yellow-500 hover:bg-yellow-400 text-black'}`}>
+                                {isDelete ? 'Excluir' : 'Confirmar'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const MobileMenu = ({ isOpen, onClose, onView, onLoadFromSheets, onForceSyncAll }) => {
+            if (!isOpen) return null;
+            
+            return (
+                <div className="fixed inset-0 z-[105] md:hidden">
+                    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose}></div>
+                    <div className="absolute top-0 right-0 h-full w-64 bg-zinc-900 border-l border-white/10 shadow-2xl flex flex-col gap-4 p-6 animate-slide-up">
+                        <button onClick={onClose} className="text-zinc-400 hover:text-white text-3xl text-right mb-4">✕</button>
+                        <button
+                            onClick={() => {
+                                onView('ranking');
+                                onClose();
+                            }}
+                            className="flex items-center gap-3 text-left px-4 py-3 rounded-2xl bg-zinc-800/50 hover:bg-zinc-700 text-white font-bold uppercase text-sm tracking-widest transition-all"
+                        >
+                            🏆 Ranking
+                        </button>
+                        <button
+                            onClick={() => {
+                                onLoadFromSheets();
+                                onClose();
+                            }}
+                            className="flex items-center gap-3 text-left px-4 py-3 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-bold uppercase text-sm tracking-widest transition-all border border-emerald-500/30"
+                        >
+                            ⬇️ Baixar
+                        </button>
+                        <button
+                            onClick={() => {
+                                onForceSyncAll();
+                                onClose();
+                            }}
+                            className="flex items-center gap-3 text-left px-4 py-3 rounded-2xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 font-bold uppercase text-sm tracking-widest transition-all border border-blue-500/30"
+                        >
+                            ⬆️ Enviar
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        const LoadingScreen = () => (
+            <div style={{
+                position: 'fixed',
+                inset: 0,
+                background: '#0F0D15',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 9999,
+                gap: '12px'
+            }}>
+                <div style={{
+                    width: '30px',
+                    height: '30px',
+                    border: '3px solid #FFD952',
+                    borderTopColor: 'transparent',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite'
+                }}></div>
+                <span style={{ color: '#FFD952', fontWeight: 'bold' }}>Carregando...</span>
+            </div>
+        );
+
         const App = () => {
             const [movies, setMovies] = useState(() => JSON.parse(localStorage.getItem('cine_v5_movies')) || []);
             const [reviews, setReviews] = useState(() => JSON.parse(localStorage.getItem('cine_v5_reviews')) || []);
             const [view, setView] = useState("catalog");
             const [selectedMovie, setSelectedMovie] = useState(null);
             const [showAddModal, setShowAddModal] = useState(false);
-            
+
             // Busca e Form
             const [suggestions, setSuggestions] = useState([]);
             const [loading, setLoading] = useState(false);
             const [errorApi, setErrorApi] = useState(false);
             const [movieForm, setMovieForm] = useState({ title: '', year: '', genre: 'Filme', poster: '', description: '' });
-            
+
             const [formRating, setFormRating] = useState(0);
             const [hoverRating, setHoverRating] = useState(0);
             const [syncing, setSyncing] = useState(false);
+            
+            // Modal de confirmação
+            const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {}, isDelete: false });
+            
+            // Menu Mobile
+            const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+            
+            // Skeleton loading states
+            const [isLoadingMovies, setIsLoadingMovies] = useState(false);
+            const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+            const [isInitialLoading, setIsInitialLoading] = useState(true);
+
+            useEffect(() => {
+                // Remove initial loading screen after 2 seconds
+                const timer = setTimeout(() => {
+                    setIsInitialLoading(false);
+                }, 2000);
+                return () => clearTimeout(timer);
+            }, []);
 
             const syncMovieToSheets = async (movie) => {
                 if (!URL_GOOGLE_SHEETS.includes("script.google.com")) return;
@@ -96,6 +345,7 @@
 
             const loadFromSheets = async () => {
                 if (!URL_GOOGLE_SHEETS.includes("script.google.com")) { alert('URL nao configurada!'); return; }
+                setIsLoadingMovies(true);
                 setSyncing(true);
                 try {
                     const mRes = await fetch(`${URL_GOOGLE_SHEETS}?action=getMovies&t=${Date.now()}`, { mode: 'cors' });
@@ -110,7 +360,7 @@
                     }
                     alert('Dados carregados!');
                 } catch (e) { alert('Erro ao carregar'); }
-                finally { setSyncing(false); }
+                finally { setIsLoadingMovies(false); setSyncing(false); }
             };
 
             const forceSyncAll = async () => {
@@ -125,26 +375,42 @@
             };
 
             const deleteMovie = async (id) => {
-                if (!confirm('Tem certeza que deseja excluir este filme?')) return;
-                setMovies(movies.filter(m => m.id !== id));
-                setReviews(reviews.filter(r => r.movieId !== id));
-                if (URL_GOOGLE_SHEETS.includes("script.google.com")) {
-                    try {
-                        const params = new URLSearchParams({ action: 'deleteMovie', id: id.toString() });
-                        await fetch(`${URL_GOOGLE_SHEETS}?${params.toString()}`, { method: 'GET', mode: 'no-cors' });
-                    } catch (e) { console.error(e); }
-                }
+                setConfirmModal({
+                    isOpen: true,
+                    title: 'Excluir filme?',
+                    message: 'Tem certeza que deseja excluir este filme? Todas as avaliações também serão removidas.',
+                    onConfirm: async () => {
+                        setMovies(movies.filter(m => m.id !== id));
+                        setReviews(reviews.filter(r => r.movieId !== id));
+                        setConfirmModal({ ...confirmModal, isOpen: false });
+                        if (URL_GOOGLE_SHEETS.includes("script.google.com")) {
+                            try {
+                                const params = new URLSearchParams({ action: 'deleteMovie', id: id.toString() });
+                                await fetch(`${URL_GOOGLE_SHEETS}?${params.toString()}`, { method: 'GET', mode: 'no-cors' });
+                            } catch (e) { console.error(e); }
+                        }
+                    },
+                    isDelete: true
+                });
             };
 
             const deleteReview = async (id) => {
-                if (!confirm('Tem certeza que deseja excluir esta avaliação?')) return;
-                setReviews(reviews.filter(r => r.id !== id));
-                if (URL_GOOGLE_SHEETS.includes("script.google.com")) {
-                    try {
-                        const params = new URLSearchParams({ action: 'deleteReview', id: id.toString() });
-                        await fetch(`${URL_GOOGLE_SHEETS}?${params.toString()}`, { method: 'GET', mode: 'no-cors' });
-                    } catch (e) { console.error(e); }
-                }
+                setConfirmModal({
+                    isOpen: true,
+                    title: 'Excluir avaliação?',
+                    message: 'Tem certeza que deseja remover esta crítica?',
+                    onConfirm: async () => {
+                        setReviews(reviews.filter(r => r.id !== id));
+                        setConfirmModal({ ...confirmModal, isOpen: false });
+                        if (URL_GOOGLE_SHEETS.includes("script.google.com")) {
+                            try {
+                                const params = new URLSearchParams({ action: 'deleteReview', id: id.toString() });
+                                await fetch(`${URL_GOOGLE_SHEETS}?${params.toString()}`, { method: 'GET', mode: 'no-cors' });
+                            } catch (e) { console.error(e); }
+                        }
+                    },
+                    isDelete: true
+                });
             };
 
             const fetchMovies = async (query) => {
@@ -195,46 +461,74 @@
                 localStorage.setItem('cine_v5_reviews', JSON.stringify(reviews));
             }, [movies, reviews]);
 
+            useEffect(() => {
+                if (isLoadingDetails) {
+                    const timer = setTimeout(() => {
+                        setIsLoadingDetails(false);
+                    }, 800);
+                    return () => clearTimeout(timer);
+                }
+            }, [isLoadingDetails]);
+
             return (
                 <div className="min-h-screen pb-10">
-                    <nav className="sticky top-0 z-50 glass px-8 py-4 flex justify-between items-center">
-                        <h1 onClick={() => setView('catalog')} className="text-2xl font-black cursor-pointer">CINE<span className="text-yellow-500">RATE</span></h1>
-                        <div className="flex gap-4 items-center">
-                            <button onClick={() => setView('ranking')} className="text-xs font-bold uppercase tracking-widest text-zinc-400 hover:text-white transition-colors">Ranking</button>
-                            <button onClick={loadFromSheets} disabled={syncing} className="text-xs font-bold uppercase tracking-widest text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-2">
-                                {syncing ? <span className="loader-spin w-3 h-3 border-2"></span> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>}
+                    {isInitialLoading ? (
+                        <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4 gap-12">
+                            <h1 className="text-4xl font-black">CINE<span className="text-yellow-500">RATE</span></h1>
+                            <SkeletonLoader type="movie" count={5} />
+                        </div>
+                    ) : (
+                        <>
+                    <nav className="sticky top-0 z-50 glass px-4 sm:px-8 py-4 flex justify-between items-center">
+                        <h1 onClick={() => setView('catalog')} className="text-xl sm:text-2xl font-black cursor-pointer">CINE<span className="text-yellow-500">RATE</span></h1>
+                        
+                        {/* Desktop Menu */}
+                        <div className="hidden sm:flex flex-wrap gap-3 sm:gap-4 items-center">
+                            <button onClick={() => setView('ranking')} className="text-xs font-bold uppercase tracking-widest text-zinc-400 hover:text-white transition-colors bg-zinc-900/30 hover:bg-zinc-800 px-4 py-2.5 rounded-2xl border border-white/5">Ranking</button>
+                            <button onClick={loadFromSheets} disabled={syncing} className="text-xs font-bold uppercase tracking-widest text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-2 bg-emerald-500/10 hover:bg-emerald-500/20 px-4 py-2.5 rounded-2xl border border-emerald-500/30">
+                                {syncing ? <span className="loader-spin w-3 h-3 border-2"></span> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" /></svg>}
                                 Baixar
                             </button>
-                            <button onClick={forceSyncAll} disabled={syncing} className="text-xs font-bold uppercase tracking-widest text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-2">
-                                {syncing ? <span className="loader-spin w-3 h-3 border-2"></span> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>}
+                            <button onClick={forceSyncAll} disabled={syncing} className="text-xs font-bold uppercase tracking-widest text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-2 bg-blue-500/10 hover:bg-blue-500/20 px-4 py-2.5 rounded-2xl border border-blue-500/30">
+                                {syncing ? <span className="loader-spin w-3 h-3 border-2"></span> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>}
                                 Enviar
                             </button>
-                            <button onClick={() => setShowAddModal(true)} className="bg-yellow-500 text-black px-6 py-2.5 rounded-full font-black text-[10px] uppercase tracking-tighter hover:scale-105 transition-all">Adicionar Filme</button>
+                            <button onClick={() => setShowAddModal(true)} className="bg-yellow-500 hover:bg-yellow-400 text-black px-6 py-2.5 rounded-full font-black text-[10px] uppercase tracking-tighter transition-all hover:scale-105">Adicionar Filme</button>
+                        </div>
+
+                        {/* Mobile Hamburger Menu */}
+                        <div className="sm:hidden flex items-center gap-3">
+                            <button onClick={() => setShowAddModal(true)} className="bg-yellow-500 hover:bg-yellow-400 text-black px-4 py-2.5 rounded-full font-black text-[10px] uppercase tracking-tighter transition-all">+ Filme</button>
+                            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="text-white hover:text-yellow-500 transition-colors">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                            </button>
                         </div>
                     </nav>
 
-                    <main className="max-w-7xl mx-auto p-6">
+                    <main className="max-w-7xl mx-auto p-4 sm:p-6">
                         {view === 'catalog' && (
                             <div className="animate-slide-up">
-                                <h2 className="text-4xl font-black mb-10 italic">Meu Catálogo</h2>
-                                {movies.length === 0 ? (
+                                <h2 className="text-2xl sm:text-4xl font-black mb-8 sm:mb-10 italic">Meu Catálogo</h2>
+                                {isLoadingMovies ? (
+                                    <SkeletonLoader type="movie" count={5} />
+                                ) : movies.length === 0 ? (
                                     <div className="py-20 text-center border-2 border-dashed border-zinc-800 rounded-[40px]">
                                         <p className="text-zinc-500 font-bold uppercase text-xs tracking-widest">Sua biblioteca está vazia</p>
                                     </div>
                                 ) : (
-                                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-10">
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 sm:gap-8">
                                         {movies.map(m => (
                                             <div key={m.id} className="group">
-                                                <div onClick={() => {setSelectedMovie(m); setView('details')}} className="relative aspect-[2/3] rounded-[32px] overflow-hidden mb-4 shadow-2xl border border-white/5 bg-zinc-900 cursor-pointer">
+                                                <div onClick={() => { setSelectedMovie(m); setIsLoadingDetails(true); setView('details'); }} className="relative aspect-[2/3] rounded-[32px] overflow-hidden mb-4 shadow-2xl border border-white/5 bg-zinc-900 cursor-pointer">
                                                     <img src={m.poster} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                                                     <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
                                                         <span className="text-yellow-500 text-xs font-black italic">★ {getAvg(m.id)}</span>
                                                     </div>
                                                 </div>
-                                                <h3 onClick={() => {setSelectedMovie(m); setView('details')}} className="font-bold text-sm truncate cursor-pointer">{m.title}</h3>
-                                                <div className="flex justify-between items-center">
+                                                <h3 onClick={() => { setSelectedMovie(m); setIsLoadingDetails(true); setView('details'); }} className="font-bold text-sm truncate cursor-pointer">{m.title}</h3>
+                                                <div className="flex justify-between items-center gap-3 mt-2">
                                                     <p className="text-zinc-500 text-[10px] font-bold uppercase">{m.year}</p>
-                                                    <button onClick={(e) => { e.stopPropagation(); deleteMovie(m.id); }} className="text-red-500 hover:text-red-400 text-[10px] font-bold uppercase">Excluir</button>
+                                                    <button onClick={(e) => { e.stopPropagation(); deleteMovie(m.id); }} className="bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 text-[10px] font-bold uppercase px-3 py-1.5 rounded-xl border border-red-500/30 transition-all">Excluir</button>
                                                 </div>
                                             </div>
                                         ))}
@@ -244,60 +538,69 @@
                         )}
 
                         {view === 'details' && selectedMovie && (
-                            <div className="animate-slide-up max-w-5xl mx-auto">
-                                <button onClick={() => setView('catalog')} className="text-zinc-500 hover:text-white mb-10 text-xs font-bold tracking-widest">← VOLTAR</button>
-                                <div className="grid md:grid-cols-12 gap-16">
-                                    <div className="md:col-span-5 text-center">
-                                        <img src={selectedMovie.poster} className="w-full rounded-[48px] shadow-2xl border border-white/10 mb-6" />
-                                        <div className="inline-flex items-center gap-4 bg-zinc-900 px-6 py-3 rounded-full border border-white/5">
-                                            <span className="text-3xl font-black text-yellow-500 italic">{getAvg(selectedMovie.id)}</span>
-                                            <StarRating rating={Math.round(getAvg(selectedMovie.id))} size={14} />
+                            <>
+                                {isLoadingDetails && <SkeletonLoader type="detail" />}
+                                {!isLoadingDetails && (
+                            <div className="animate-slide-up max-w-5xl mx-auto fade-in">
+                                <button onClick={() => setView('catalog')} className="inline-flex items-center gap-2 bg-zinc-900/50 hover:bg-zinc-800 border border-white/10 text-zinc-400 hover:text-white px-4 sm:px-6 py-3 rounded-2xl mb-6 sm:mb-10 text-xs font-bold tracking-widest transition-all">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                                    VOLTAR
+                                </button>
+                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16">
+                                    <div className="lg:col-span-5 text-center order-first lg:order-none">
+                                        <img src={selectedMovie.poster} className="w-full max-w-xs mx-auto rounded-[48px] shadow-2xl border border-white/10 mb-6" />
+                                        <div className="inline-flex items-center gap-3 sm:gap-4 bg-zinc-900 px-4 sm:px-6 py-3 rounded-full border border-white/5">
+                                            <span className="text-2xl sm:text-3xl font-black text-yellow-500 italic">{getAvg(selectedMovie.id)}</span>
+                                            <StarRating rating={Math.round(getAvg(selectedMovie.id))} size={12} />
                                         </div>
                                     </div>
-                                    <div className="md:col-span-7">
-                                        <div className="flex justify-between items-start mb-4">
-                                            <h1 className="text-6xl font-black leading-none tracking-tighter">{selectedMovie.title}</h1>
-                                            <button onClick={() => deleteMovie(selectedMovie.id)} className="text-red-500 hover:text-red-400 text-[10px] font-bold uppercase">Excluir Filme</button>
+                                    <div className="lg:col-span-7">
+                                        <div className="flex flex-col gap-4 mb-6 sm:mb-8">
+                                            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-tighter">{selectedMovie.title}</h1>
+                                            <button onClick={() => deleteMovie(selectedMovie.id)} className="bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 text-[10px] font-bold uppercase px-4 py-2.5 rounded-2xl border border-red-500/30 transition-all w-fit">Excluir Filme</button>
                                         </div>
-                                        <p className="text-zinc-500 font-bold mb-8 uppercase tracking-widest">{selectedMovie.year} • {selectedMovie.genre}</p>
-                                        <p className="text-zinc-400 text-xl leading-relaxed mb-12">{selectedMovie.description}</p>
-                                        
-                                        <div className="bg-zinc-900/50 p-10 rounded-[40px] border border-white/5 shadow-inner">
-                                            <h2 className="text-2xl font-bold mb-8 italic">Escrever Crítica</h2>
+                                        <p className="text-zinc-500 font-bold mb-6 uppercase tracking-widest text-sm">{selectedMovie.year} • {selectedMovie.genre}</p>
+                                        <p className="text-zinc-400 text-base sm:text-lg leading-relaxed mb-10">{selectedMovie.description}</p>
+
+                                        <div className="bg-zinc-900/50 p-6 sm:p-10 rounded-[40px] border border-white/5 shadow-inner mb-10">
+                                            <h2 className="text-xl sm:text-2xl font-bold mb-6 sm:mb-8 italic">Escrever Crítica</h2>
                                             <form onSubmit={async (e) => {
                                                 e.preventDefault();
-                                                if(formRating === 0) return alert("Selecione uma nota!");
+                                                if (formRating === 0) return alert("Selecione uma nota!");
                                                 const rev = { id: Date.now(), movieId: selectedMovie.id, rating: formRating, userName: e.target.user.value || "Anon", text: e.target.text.value, date: new Date().toLocaleDateString('pt-BR') };
                                                 setReviews([rev, ...reviews]);
                                                 setFormRating(0); e.target.reset();
                                                 await syncReviewToSheets(rev);
-                                            }} className="space-y-6">
-                                                <div className="bg-black/40 p-6 rounded-3xl w-fit border border-white/5 flex items-center gap-6">
-                                                    <StarRating interactive={true} rating={formRating} hoverRating={hoverRating} onHover={setHoverRating} onClick={setFormRating} size={28} />
-                                                    <span className="text-3xl font-black text-yellow-500 w-12 text-center">{hoverRating || formRating}</span>
+                                            }} className="space-y-4 sm:space-y-6">
+                                                <div className="bg-black/40 p-4 sm:p-6 rounded-3xl w-fit border border-white/5 flex items-center gap-4 sm:gap-6 flex-wrap">
+                                                    <StarRating interactive={true} rating={formRating} hoverRating={hoverRating} onHover={setHoverRating} onClick={setFormRating} size={20} />
+                                                    <span className="text-2xl sm:text-3xl font-black text-yellow-500 w-10 text-center">{hoverRating || formRating}</span>
                                                 </div>
-                                                <input name="user" placeholder="Seu apelido" className="w-full bg-black/20 border border-white/10 rounded-2xl px-6 py-4 outline-none focus:border-yellow-500 transition-colors font-bold" />
-                                                <textarea name="text" required placeholder="O que você achou?" className="w-full bg-black/20 border border-white/10 rounded-2xl px-6 py-4 h-32 outline-none focus:border-yellow-500 font-medium" />
-                                                <button className="w-full bg-yellow-500 text-black font-black py-5 rounded-2xl hover:bg-yellow-400 transition-all uppercase tracking-widest text-xs">Publicar Avaliação</button>
+                                                <input name="user" placeholder="Seu apelido" className="w-full bg-black/20 border border-white/10 rounded-2xl px-6 py-3 sm:py-4 outline-none focus:border-yellow-500 transition-colors font-bold text-sm" />
+                                                <textarea name="text" required placeholder="O que você achou?" className="w-full bg-black/20 border border-white/10 rounded-2xl px-6 py-3 sm:py-4 h-24 sm:h-32 outline-none focus:border-yellow-500 font-medium text-sm" />
+                                                <button className="w-full bg-yellow-500 text-black font-black py-4 sm:py-5 rounded-2xl hover:bg-yellow-400 transition-all uppercase tracking-widest text-xs">Publicar Avaliação</button>
                                             </form>
                                         </div>
 
-                                        <div className="mt-16 space-y-8">
+                                        <div className="space-y-4 sm:space-y-6">
+                                            {reviews.filter(r => r.movieId === selectedMovie.id).length === 0 && (
+                                                <p className="text-zinc-500 text-center py-8">Nenhuma avaliação ainda</p>
+                                            )}
                                             {reviews.filter(r => r.movieId === selectedMovie.id).map(r => (
-                                                <div key={r.id} className="bg-white/5 p-8 rounded-[32px] flex gap-6 border border-white/5">
-                                                    <div className="w-12 h-12 rounded-full bg-yellow-500 text-black flex items-center justify-center font-black text-xl">{r.userName[0].toUpperCase()}</div>
-                                                    <div className="flex-1">
-                                                        <div className="flex justify-between items-center mb-4">
-                                                            <h4 className="font-bold">{r.userName}</h4>
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="flex items-center gap-3 bg-black/40 px-3 py-1.5 rounded-xl border border-white/5">
-                                                                    <StarRating rating={r.rating} size={10} />
+                                                <div key={r.id} className="bg-white/5 p-4 sm:p-6 rounded-[32px] flex flex-col sm:flex-row gap-4 sm:gap-6 border border-white/5">
+                                                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-yellow-500 text-black flex items-center justify-center font-black text-lg flex-shrink-0">{r.userName[0].toUpperCase()}</div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex flex-col sm:flex-row justify-between items-start gap-2 sm:gap-3 mb-3 sm:mb-4">
+                                                            <h4 className="font-bold text-sm">{r.userName}</h4>
+                                                            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                                                                <div className="flex items-center gap-2 bg-black/40 px-2 sm:px-3 py-1 rounded-xl border border-white/5">
+                                                                    <StarRating rating={r.rating} size={8} />
                                                                     <span className="text-yellow-500 font-bold text-xs">{r.rating}</span>
                                                                 </div>
-                                                                <button onClick={() => deleteReview(r.id)} className="text-red-500 hover:text-red-400 text-[10px] font-bold uppercase">Excluir</button>
+                                                                <button onClick={() => deleteReview(r.id)} className="bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 text-[10px] font-bold uppercase px-2 py-1 rounded-xl border border-red-500/30 transition-all">Excluir</button>
                                                             </div>
                                                         </div>
-                                                        <p className="text-zinc-400 italic leading-relaxed">"{r.text}"</p>
+                                                        <p className="text-zinc-400 italic leading-relaxed text-sm">"{r.text}"</p>
                                                     </div>
                                                 </div>
                                             ))}
@@ -305,27 +608,31 @@
                                     </div>
                                 </div>
                             </div>
+                                )}
+                            </>
                         )}
 
                         {view === 'ranking' && (
                             <div className="max-w-2xl mx-auto animate-slide-up">
-                                <h1 className="text-5xl font-black mb-12 italic tracking-tighter text-center">HALL DA <span className="text-yellow-500">FAMA</span></h1>
-                                {movies.length === 0 ? <p className="text-center text-zinc-500">Catálogo vazio.</p> : 
-                                    movies.map(m => ({...m, score: parseFloat(getAvg(m.id))}))
-                                          .sort((a,b) => b.score - a.score)
-                                          .map((m, i) => (
-                                        <div key={m.id} onClick={() => {setSelectedMovie(m); setView('details')}} className="bg-zinc-900/40 p-6 rounded-[32px] border border-white/5 flex items-center gap-8 mb-6 hover:bg-zinc-800 transition-all cursor-pointer group">
-                                            <span className="text-4xl font-black text-zinc-800 group-hover:text-yellow-500 transition-colors w-12">{i+1}</span>
-                                            <img src={m.poster} className="w-16 h-24 object-cover rounded-2xl shadow-xl border border-white/10" />
-                                            <div className="flex-1">
-                                                <h3 className="font-bold text-xl">{m.title}</h3>
-                                                <p className="text-[10px] text-zinc-500 font-black tracking-widest uppercase">{m.year}</p>
+                                <h1 className="text-3xl sm:text-5xl font-black mb-8 sm:mb-12 italic tracking-tighter text-center">HALL DA <span className="text-yellow-500">FAMA</span></h1>
+                                {isLoadingMovies ? (
+                                    <SkeletonLoader type="ranking" count={5} />
+                                ) : movies.length === 0 ? <p className="text-center text-zinc-500">Catálogo vazio.</p> :
+                                    movies.map(m => ({ ...m, score: parseFloat(getAvg(m.id)) }))
+                                        .sort((a, b) => b.score - a.score)
+                                        .map((m, i) => (
+                                            <div key={m.id} onClick={() => { setSelectedMovie(m); setIsLoadingDetails(true); setView('details') }} className="bg-zinc-900/40 p-4 sm:p-6 rounded-[32px] border border-white/5 flex items-center gap-4 sm:gap-8 mb-4 sm:mb-6 hover:bg-zinc-800 transition-all cursor-pointer group">
+                                                <span className="text-3xl sm:text-4xl font-black text-zinc-800 group-hover:text-yellow-500 transition-colors w-12">{i + 1}</span>
+                                                <img src={m.poster} className="w-12 sm:w-16 h-20 sm:h-24 object-cover rounded-2xl shadow-xl border border-white/10 flex-shrink-0" />
+                                                <div className="flex-1 min-w-0">
+                                                    <h3 className="font-bold text-lg sm:text-xl truncate">{m.title}</h3>
+                                                    <p className="text-[10px] text-zinc-500 font-black tracking-widest uppercase">{m.year}</p>
+                                                </div>
+                                                <div className="text-right flex-shrink-0">
+                                                    <div className="text-2xl sm:text-3xl font-black text-yellow-500 italic">{m.score.toFixed(1)}</div>
+                                                </div>
                                             </div>
-                                            <div className="text-right">
-                                                <div className="text-3xl font-black text-yellow-500 italic">{m.score.toFixed(1)}</div>
-                                            </div>
-                                        </div>
-                                    ))
+                                        ))
                                 }
                             </div>
                         )}
@@ -333,10 +640,10 @@
 
                     {showAddModal && (
                         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/95 backdrop-blur-xl">
-                            <div className="bg-zinc-900 border border-white/10 w-full max-w-xl rounded-[48px] p-12 animate-slide-up relative shadow-2xl">
+                            <div className="bg-zinc-900 border border-white/10 w-full max-w-xl rounded-[48px] p-8 sm:p-12 animate-slide-up relative shadow-2xl max-h-screen overflow-y-auto">
                                 <button onClick={() => setShowAddModal(false)} className="absolute top-10 right-10 text-zinc-500 hover:text-white transition-colors text-2xl">✕</button>
                                 <h2 className="text-3xl font-black mb-10 italic tracking-tighter">NOVO FILME</h2>
-                                
+
                                 {errorApi && (
                                     <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-2xl mb-6 text-xs font-bold">
                                         ⚠️ Erro 401: Chave de API expirada ou inválida. Você pode preencher manualmente abaixo.
@@ -346,22 +653,22 @@
                                 <form onSubmit={saveMovie} className="space-y-5">
                                     <div className="relative">
                                         <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3 block">Título (Busca Inteligente)</label>
-                                        <input 
+                                        <input
                                             value={movieForm.title}
                                             onChange={(e) => {
-                                                setMovieForm({...movieForm, title: e.target.value});
+                                                setMovieForm({ ...movieForm, title: e.target.value });
                                                 fetchMovies(e.target.value);
                                             }}
-                                            required placeholder="Batman, Matrix, Inception..." 
-                                            className="w-full bg-black/40 border border-white/10 rounded-3xl px-8 py-5 outline-none focus:border-yellow-500 font-bold transition-all" 
+                                            required placeholder="Batman, Matrix, Inception..."
+                                            className="w-full bg-black/40 border border-white/10 rounded-3xl px-8 py-5 outline-none focus:border-yellow-500 font-bold transition-all"
                                         />
                                         {loading && <div className="absolute right-6 top-14 loader-spin"></div>}
-                                        
+
                                         {suggestions.length > 0 && (
-                                            <div className="absolute top-full left-0 right-0 mt-3 bg-zinc-800 rounded-[32px] border border-white/10 shadow-2xl z-[110] overflow-hidden">
+                                            <div className="absolute top-full left-0 right-0 mt-3 bg-zinc-800 rounded-[32px] border border-white/10 shadow-2xl z-[110] overflow-hidden max-h-64 overflow-y-auto">
                                                 {suggestions.map(s => (
                                                     <div key={s.id} onClick={() => selectItem(s)} className="p-5 hover:bg-yellow-500 hover:text-black cursor-pointer flex items-center gap-5 transition-all">
-                                                        <img src={s.poster_path ? IMG_URL+s.poster_path : ''} className="w-12 h-16 rounded-xl object-cover bg-zinc-700" />
+                                                        <img src={s.poster_path ? IMG_URL + s.poster_path : ''} className="w-12 h-16 rounded-xl object-cover bg-zinc-700" />
                                                         <div>
                                                             <p className="font-black text-sm">{s.title}</p>
                                                             <p className="text-[10px] font-bold opacity-70">{s.release_date?.split('-')[0]}</p>
@@ -375,22 +682,22 @@
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 block ml-2">Ano</label>
-                                            <input value={movieForm.year} onChange={(e)=>setMovieForm({...movieForm, year: e.target.value})} placeholder="2024" className="w-full bg-black/40 border border-white/5 rounded-3xl px-6 py-4 outline-none font-bold" />
+                                            <input value={movieForm.year} onChange={(e) => setMovieForm({ ...movieForm, year: e.target.value })} placeholder="2024" className="w-full bg-black/40 border border-white/5 rounded-3xl px-6 py-4 outline-none font-bold" />
                                         </div>
                                         <div>
                                             <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 block ml-2">Gênero</label>
-                                            <input value={movieForm.genre} onChange={(e)=>setMovieForm({...movieForm, genre: e.target.value})} placeholder="Ação" className="w-full bg-black/40 border border-white/5 rounded-3xl px-6 py-4 outline-none font-bold" />
+                                            <input value={movieForm.genre} onChange={(e) => setMovieForm({ ...movieForm, genre: e.target.value })} placeholder="Ação" className="w-full bg-black/40 border border-white/5 rounded-3xl px-6 py-4 outline-none font-bold" />
                                         </div>
                                     </div>
 
                                     <div>
                                         <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 block ml-2">Poster (URL)</label>
-                                        <input value={movieForm.poster} onChange={(e)=>setMovieForm({...movieForm, poster: e.target.value})} placeholder="https://..." className="w-full bg-black/40 border border-white/5 rounded-3xl px-6 py-4 outline-none text-[10px] font-mono text-zinc-500" />
+                                        <input value={movieForm.poster} onChange={(e) => setMovieForm({ ...movieForm, poster: e.target.value })} placeholder="https://..." className="w-full bg-black/40 border border-white/5 rounded-3xl px-6 py-4 outline-none text-[10px] font-mono text-zinc-500" />
                                     </div>
 
                                     <div>
                                         <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 block ml-2">Sinopse</label>
-                                        <textarea value={movieForm.description} onChange={(e)=>setMovieForm({...movieForm, description: e.target.value})} placeholder="Conte a história..." className="w-full bg-black/40 border border-white/5 rounded-3xl px-6 py-4 h-28 outline-none font-medium text-sm" />
+                                        <textarea value={movieForm.description} onChange={(e) => setMovieForm({ ...movieForm, description: e.target.value })} placeholder="Conte a história..." className="w-full bg-black/40 border border-white/5 rounded-3xl px-6 py-4 h-28 outline-none font-medium text-sm" />
                                     </div>
 
                                     <button className="w-full bg-white text-black font-black py-6 rounded-3xl hover:bg-yellow-500 transition-all uppercase tracking-widest text-xs mt-6 shadow-xl">
@@ -400,6 +707,25 @@
                             </div>
                         </div>
                     )}
+
+                    <MobileMenu 
+                        isOpen={mobileMenuOpen}
+                        onClose={() => setMobileMenuOpen(false)}
+                        onView={(v) => setView(v)}
+                        onLoadFromSheets={loadFromSheets}
+                        onForceSyncAll={forceSyncAll}
+                    />
+
+                    <ConfirmModal 
+                        isOpen={confirmModal.isOpen} 
+                        title={confirmModal.title}
+                        message={confirmModal.message}
+                        onConfirm={confirmModal.onConfirm}
+                        onCancel={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                        isDelete={confirmModal.isDelete}
+                    />
+                        </>
+                    )}
                 </div>
             );
         };
@@ -408,4 +734,5 @@
         root.render(<App />);
     </script>
 </body>
+
 </html>
